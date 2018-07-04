@@ -72,6 +72,7 @@ class Sprite(object):  # pylint: disable=too-many-instance-attributes
         self._frame_delta = 0
         self.can_flip = None
         self._phrase_width = 0
+        self._reset_frame_count = False
 
     def __repr__(self):
         """Print out details of a sprite."""
@@ -152,7 +153,11 @@ class Sprite(object):  # pylint: disable=too-many-instance-attributes
     def update_frame_num(self):
         """Change frame num when there have been enough ticks."""
         if not self._ticks % self.ticks_per_frame:
-            self._frame_num += self._frame_delta
+            if self._reset_frame_count:
+                self._frame_num = 0
+                self._reset_frame_count = False
+            else:
+                self._frame_num += self._frame_delta
 
     def check_movement(self):
         """Move if there have been enough ticks, and wrap."""
@@ -590,7 +595,14 @@ class AnimatedGif(BaseImage):
     def check_frame_bounds(self):
         """Roll back to first frame if all have been seen."""
         if self._frame_num == len(self.frames) - 1:
-            self._frame_num = 0
+            # If we only reset the frame count to zero directly, the update_frame_num() method
+            # will actually increase it to frame 1 when we render the sprite, resulting in
+            # frame 0 to be skipped after the first loop.
+            # By setting a reset flag, a modified update_frame_num() method will set the
+            # frame number to zero correctly.
+            # This error doesn't occur with other sprites because we usually just change
+            # the frame-delta, and don't fiddle with the frame number directly.
+            self._reset_frame_count = True
 
     @property
     def width(self):
